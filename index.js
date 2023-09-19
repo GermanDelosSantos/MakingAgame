@@ -3,6 +3,9 @@ const c = canvas.getContext('2d')
 
 canvas.width = innerWidth
 canvas.height = innerHeight
+
+const scoreEl = document.querySelector('#scoreEl');
+console.log(scoreEl)
 // jugador
 class Player {
     constructor(x, y, radius, color) {
@@ -66,6 +69,7 @@ class Enemy {
     }
 }
 //Creacion de Particulas
+const friction = 0.97
 class Particle {
     constructor(x, y, radius, color, velocity) {
         this.x = x
@@ -73,19 +77,26 @@ class Particle {
         this.radius = radius
         this.color = color
         this.velocity = velocity
+        this.alpha =1
     }
 
     draw() {
+        c.save()
+        c.globalAlpha = this.alpha
         c.beginPath()
         c.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false)
         c.fillStyle = this.color
         c.fill()
+        c.restore()
     }
 
     update() {
         this.draw()
+        this.velocity.x *= friction
+        this.velocity.y *= friction
         this.x = this.x + this.velocity.x
         this.y = this.y + this.velocity.y
+        this.alpha -= 0.01
     }
 }
 
@@ -128,13 +139,19 @@ function spawnEnemies() {
 }
 // animacion
 let animationId
+let score = 0
 function animate () {
     animationId = requestAnimationFrame(animate)
     c.fillStyle = 'rgba(0, 0, 0, 0.1)'
     c.fillRect(0, 0, canvas.width, canvas.height)
     player.draw()
-    particles.forEach(particle =>{
-        particle.update()
+    particles.forEach((particle, index) =>{
+        if (particle.alpha <= 0){
+            particles.splice( index, 1)
+        }else{
+            particle.update()
+        }
+        
     });
     projetiles.forEach((projectile, index) => {
         projectile.update()
@@ -161,15 +178,21 @@ function animate () {
         // eliminar enemigos
         projetiles.forEach((projectile, projectileIndex) => {
             const dist = Math.hypot(projectile.x - enemy.x, projectile.y - enemy.y)
-
+            // Explociones
             if (dist - enemy.radius - projectile.radius < 1) 
             {
-                for (let i = 0; i < 8; i++) {
-                    particles.push (new Particle(projectile.x, projectile.y, 3, enemy.color,
-                        {x: Math.random() - 0.5, y: Math.random() - 0.5}));
+
+                for (let i = 0; i < enemy.radius * 2; i++) {
+                    particles.push (new Particle(
+                        projectile.x, projectile.y, Math.random() * 2, enemy.color,
+                        {x: (Math.random() - 0.5) * Math.random() * 6, y: (Math.random() - 0.5) * Math.random() * 6}));
                     
                 }
+            //Achicar enemigos
                 if(enemy.radius -10 > 5){
+            //Score Puntaje
+                score += 100
+                scoreEl.innerHTML = score
                     gsap.to(enemy, {
                         radius: enemy.radius - 10
                     })
@@ -177,6 +200,10 @@ function animate () {
                         projetiles.splice(projectileIndex, 1)
                     }, 0)
                 } else{
+            //Score Puntaje
+                score += 250
+                scoreEl.innerHTML = score
+
                     setTimeout(() => {
                         enemies.splice(index, 1)
                         projetiles.splice(projectileIndex, 1)
